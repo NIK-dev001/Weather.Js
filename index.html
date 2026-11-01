@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal Weather</title>
+    <style>
+        :root {
+            --bg: #050505;
+            --panel: #0a0a0a;
+            --accent: #a855f7;
+            --text: #e0e0e0;
+            --dim: #666;
+            --border: #222;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .weather-card {
+            width: 350px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 30px;
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.1);
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        input {
+            flex: 1;
+            background: #000;
+            border: 1px solid var(--border);
+            color: var(--accent);
+            padding: 10px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        input:focus { border-color: var(--accent); }
+
+        button {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover { opacity: 0.8; }
+
+        .weather-info {
+            display: none; /* Скрыто по умолчанию */
+            text-align: center;
+        }
+
+        .city { font-size: 24px; color: var(--text); margin-bottom: 5px; }
+        .temp { font-size: 48px; color: var(--accent); font-weight: bold; margin: 10px 0; }
+        .desc { color: var(--dim); text-transform: capitalize; margin-bottom: 20px; }
+
+        .details {
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid var(--border);
+            padding-top: 20px;
+            font-size: 14px;
+        }
+
+        .col { display: flex; flex-direction: column; gap: 5px; }
+        .col span:first-child { color: var(--dim); font-size: 12px; }
+        .col span:last-child { color: var(--text); font-weight: bold; }
+
+        .error {
+            color: #ef4444;
+            text-align: center;
+            display: none;
+            margin-top: 10px;
+        }
+        
+        .loading {
+            color: var(--dim);
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="weather-card">
+        <div class="search-box">
+            <input type="text" id="city-input" placeholder="Enter city...">
+            <button id="search-btn">GO</button>
+        </div>
+
+        <div class="loading" id="loading">Connecting to satellite...</div>
+        <div class="error" id="error">City not found or API error.</div>
+
+        <div class="weather-info" id="weather-info">
+            <h2 class="city" id="city">Moscow</h2>
+            <div class="temp"><span id="temp">0</span>°C</div>
+            <div class="desc" id="desc">Clear sky</div>
+
+            <div class="details">
+                <div class="col">
+                    <span>Humidity</span>
+                    <span id="humidity">0%</span>
+                </div>
+                <div class="col">
+                    <span>Wind</span>
+                    <span id="wind">0 m/s</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ ВСТАВЬ СЮДА СВОЙ API КЛЮЧ ОТ OPENWEATHERMAP
+        const apiKey = "5b6757a4ca8b6a9c9a1a20f30a9e98a5"; 
+        const apiUrl = "https://api.openweathermap.org/data/2.5/weather?units=metric&q=";
+
+        const searchBtn = document.getElementById("search-btn");
+        const cityInput = document.getElementById("city-input");
+        const weatherInfo = document.getElementById("weather-info");
+        const errorBox = document.getElementById("error");
+        const loadingBox = document.getElementById("loading");
+
+        async function checkWeather(city) {
+            // Сброс интерфейса
+            weatherInfo.style.display = "none";
+            errorBox.style.display = "none";
+            loadingBox.style.display = "block";
+
+            try {
+                const response = await fetch(apiUrl + city + `&appid=${apiKey}`);
+                
+                if (response.status == 404) {
+                    errorBox.style.display = "block";
+                    loadingBox.style.display = "none";
+                } else {
+                    const data = await response.json();
+
+                    document.getElementById("city").innerHTML = data.name;
+                    document.getElementById("temp").innerHTML = Math.round(data.main.temp);
+                    document.getElementById("humidity").innerHTML = data.main.humidity + "%";
+                    document.getElementById("wind").innerHTML = data.wind.speed + " m/s";
+                    document.getElementById("desc").innerHTML = data.weather[0].description;
+
+                    loadingBox.style.display = "none";
+                    weatherInfo.style.display = "block";
+                }
+            } catch (err) {
+                console.error(err);
+                loadingBox.style.display = "none";
+                errorBox.innerHTML = "Connection error. Check API Key.";
+                errorBox.style.display = "block";
+            }
+        }
+
+        searchBtn.addEventListener("click", () => {
+            if(cityInput.value) checkWeather(cityInput.value);
+        });
+
+        cityInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter" && cityInput.value) checkWeather(cityInput.value);
+        });
+    </script>
+</body>
+</html>
