@@ -3,179 +3,255 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terminal Weather</title>
+    <title>Weather.JS</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Шрифт Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+    
     <style>
         :root {
-            --bg: #050505;
-            --panel: #0a0a0a;
-            --accent: #a855f7;
-            --text: #e0e0e0;
-            --dim: #666;
-            --border: #222;
+            --glass-bg: rgba(20, 20, 25, 0.85); /* Темное стекло */
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent: #FF8C00;
+            --text-main: #ffffff;
+            --text-dim: #a1a1aa;
+            --input-bg: rgba(0, 0, 0, 0.3);
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
 
         body {
-            background: var(--bg);
-            color: var(--text);
             height: 100vh;
+            width: 100vw;
+            overflow: hidden;
             display: flex;
-            justify-content: center;
-            align-items: center;
+            background: #111;
         }
 
-        .weather-card {
-            width: 350px;
-            background: var(--panel);
-            border: 1px solid var(--border);
+        /* MAP BACKGROUND */
+        #map {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+        }
+
+        /* SIDEBAR */
+        aside {
+            position: relative;
+            z-index: 100;
+            width: 340px;
+            height: 100%;
+            
+            background: var(--glass-bg);
+            backdrop-filter: blur(30px); 
+            -webkit-backdrop-filter: blur(30px);
+            
+            border-right: 1px solid var(--glass-border);
             padding: 30px;
-            box-shadow: 0 0 20px rgba(168, 85, 247, 0.1);
-        }
-
-        .search-box {
             display: flex;
-            gap: 10px;
-            margin-bottom: 30px;
+            flex-direction: column;
+            gap: 25px;
+            box-shadow: 5px 0 30px rgba(0,0,0,0.5); 
         }
 
-        input {
-            flex: 1;
-            background: #000;
-            border: 1px solid var(--border);
-            color: var(--accent);
-            padding: 10px;
-            outline: none;
-            font-family: inherit;
-        }
-
-        input:focus { border-color: var(--accent); }
-
-        button {
-            background: var(--accent);
-            color: #000;
-            border: none;
-            padding: 10px 15px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        button:hover { opacity: 0.8; }
-
-        .weather-info {
-            display: none; /* Скрыто по умолчанию */
-            text-align: center;
-        }
-
-        .city { font-size: 24px; color: var(--text); margin-bottom: 5px; }
-        .temp { font-size: 48px; color: var(--accent); font-weight: bold; margin: 10px 0; }
-        .desc { color: var(--dim); text-transform: capitalize; margin-bottom: 20px; }
-
-        .details {
-            display: flex;
-            justify-content: space-between;
-            border-top: 1px solid var(--border);
-            padding-top: 20px;
-            font-size: 14px;
-        }
-
-        .col { display: flex; flex-direction: column; gap: 5px; }
-        .col span:first-child { color: var(--dim); font-size: 12px; }
-        .col span:last-child { color: var(--text); font-weight: bold; }
-
-        .error {
-            color: #ef4444;
-            text-align: center;
-            display: none;
-            margin-top: 10px;
-        }
+        /* LOGO */
+        .brand-container { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+        .hex-icon { width: 32px; height: 32px; }
         
-        .loading {
-            color: var(--dim);
-            text-align: center;
-            display: none;
+        .brand-text h1 { 
+            font-size: 22px; font-weight: 800; color: var(--text-main); 
+            line-height: 1; letter-spacing: -0.5px; 
         }
+        .brand-text h1 span { color: var(--accent); }
+        
+        .brand-text p { 
+            font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; 
+            color: var(--text-dim); font-weight: 600; margin-top: 4px; 
+        }
+
+        /* SEARCH */
+        .search-box input {
+            width: 100%; padding: 14px 18px; border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.1); 
+            background: var(--input-bg);
+            color: var(--text-main); font-size: 15px; outline: none; transition: 0.2s;
+        }
+        .search-box input::placeholder { color: rgba(255,255,255,0.3); }
+        .search-box input:focus { border-color: var(--accent); background: rgba(0,0,0,0.5); }
+
+        /* CITY LIST */
+        .city-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .city-list::-webkit-scrollbar { width: 4px; }
+        .city-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+        .city-item {
+            padding: 14px; border-radius: 12px; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+            transition: 0.2s; border: 1px solid transparent; color: var(--text-dim);
+        }
+        .city-item:hover { background: rgba(255,255,255,0.05); color: var(--text-main); }
+
+        .city-item.active {
+            background: var(--accent); color: white !important; font-weight: 600;
+            box-shadow: 0 4px 15px rgba(255, 140, 0, 0.4); border-color: transparent;
+        }
+        .city-item.active .temp-mini { color: rgba(255,255,255,0.9) !important; }
+
+        .city-name { font-size: 15px; }
+        .temp-mini { font-size: 14px; font-weight: 500; }
+
+        /* WEATHER INFO */
+        .weather-panel { padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .current-temp { font-size: 52px; font-weight: 700; color: var(--text-main); line-height: 1; }
+        .condition { font-size: 16px; color: var(--accent); font-weight: 600; margin: 5px 0 15px 0; }
+        .stats-row { display: flex; gap: 20px; font-size: 13px; color: var(--text-dim); }
+        .stats-row b { color: var(--text-main); font-weight: 600; }
+
     </style>
 </head>
 <body>
 
-    <div class="weather-card">
-        <div class="search-box">
-            <input type="text" id="city-input" placeholder="Enter city...">
-            <button id="search-btn">GO</button>
-        </div>
+    <div id="map"></div>
 
-        <div class="loading" id="loading">Connecting to satellite...</div>
-        <div class="error" id="error">City not found or API error.</div>
-
-        <div class="weather-info" id="weather-info">
-            <h2 class="city" id="city">Moscow</h2>
-            <div class="temp"><span id="temp">0</span>°C</div>
-            <div class="desc" id="desc">Clear sky</div>
-
-            <div class="details">
-                <div class="col">
-                    <span>Humidity</span>
-                    <span id="humidity">0%</span>
-                </div>
-                <div class="col">
-                    <span>Wind</span>
-                    <span id="wind">0 m/s</span>
-                </div>
+    <aside>
+        <div class="brand-container">
+            <svg class="hex-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#00c6ff;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#0072ff;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <polygon points="50 3, 93 25, 93 75, 50 97, 7 75, 7 25" fill="url(#grad1)" />
+                <polygon points="50 20, 78 35, 78 65, 50 80, 22 65, 22 35" fill="var(--glass-bg)" />
+            </svg>
+            
+            <div class="brand-text">
+                <h1>weather<span>.JS</span></h1>
+                <p>Parse the Sky.</p>
             </div>
         </div>
-    </div>
+
+        <div class="search-box">
+            <input type="text" id="search-input" placeholder="Search city...">
+        </div>
+
+        <div class="city-list" id="city-list"></div>
+
+        <div class="weather-panel">
+            <div class="current-temp"><span id="temp">--</span>°</div>
+            <div class="condition" id="condition">Loading...</div>
+            <div class="stats-row">
+                <span>Wind: <b id="wind">--</b> m/s</span>
+                <span>Humidity: <b id="humidity">--</b>%</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // ⚠️ ВСТАВЬ СЮДА СВОЙ API КЛЮЧ ОТ OPENWEATHERMAP
-        const apiKey = "5b6757a4ca8b6a9c9a1a20f30a9e98a5"; 
-        const apiUrl = "https://api.openweathermap.org/data/2.5/weather?units=metric&q=";
+        const defaultCity = { name: "San Francisco", lat: 37.7749, lon: -122.4194 };
+        
+        // 1. Map Init
+        const map = L.map('map', { zoomControl: false }).setView([defaultCity.lat, defaultCity.lon], 9);
 
-        const searchBtn = document.getElementById("search-btn");
-        const cityInput = document.getElementById("city-input");
-        const weatherInfo = document.getElementById("weather-info");
-        const errorBox = document.getElementById("error");
-        const loadingBox = document.getElementById("loading");
+        // 2. Base Layer: Esri World Dark Gray (Reliable, Free, No Key needed for demo)
+        // Это лучше, чем CSS фильтры, так как не ломает слой осадков
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; Esri &copy; OSM',
+            maxZoom: 16
+        }).addTo(map);
 
-        async function checkWeather(city) {
-            // Сброс интерфейса
-            weatherInfo.style.display = "none";
-            errorBox.style.display = "none";
-            loadingBox.style.display = "block";
+        // 3. Rain Layer (RainViewer)
+        L.tileLayer('https://tile.rainviewer.com/img/radar_nowcast_256m/{z}/{x}/{y}/5/1_1.png', {
+            opacity: 0.7,
+            attribution: '&copy; RainViewer'
+        }).addTo(map);
 
+        let cities = [
+            { name: "San Francisco", lat: 37.7749, lon: -122.4194 },
+            { name: "New York", lat: 40.7128, lon: -74.0060 },
+            { name: "London", lat: 51.5074, lon: -0.1278 },
+            { name: "Tokyo", lat: 35.6762, lon: 139.6503 },
+            { name: "Moscow", lat: 55.7558, lon: 37.6173 },
+            { name: "Berlin", lat: 52.5200, lon: 13.4050 }
+        ];
+
+        async function fetchWeather(lat, lon) {
             try {
-                const response = await fetch(apiUrl + city + `&appid=${apiKey}`);
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m`);
+                if (!res.ok) throw new Error("API Error");
+                const data = await res.json();
                 
-                if (response.status == 404) {
-                    errorBox.style.display = "block";
-                    loadingBox.style.display = "none";
-                } else {
-                    const data = await response.json();
-
-                    document.getElementById("city").innerHTML = data.name;
-                    document.getElementById("temp").innerHTML = Math.round(data.main.temp);
-                    document.getElementById("humidity").innerHTML = data.main.humidity + "%";
-                    document.getElementById("wind").innerHTML = data.wind.speed + " m/s";
-                    document.getElementById("desc").innerHTML = data.weather[0].description;
-
-                    loadingBox.style.display = "none";
-                    weatherInfo.style.display = "block";
-                }
-            } catch (err) {
-                console.error(err);
-                loadingBox.style.display = "none";
-                errorBox.innerHTML = "Connection error. Check API Key.";
-                errorBox.style.display = "block";
+                document.getElementById('temp').innerText = Math.round(data.current_weather.temperature);
+                document.getElementById('wind').innerText = data.current_weather.windspeed;
+                
+                const codes = {
+                    0: "Clear Sky", 1: "Mainly Clear", 2: "Partly Cloudy", 3: "Overcast",
+                    45: "Fog", 51: "Drizzle", 61: "Rain", 71: "Snow", 95: "Thunderstorm"
+                };
+                document.getElementById('condition').innerText = codes[data.current_weather.weathercode] || "Cloudy";
+                
+                const hourIndex = new Date().getHours();
+                document.getElementById('humidity').innerText = data.hourly.relativehumidity_2m[hourIndex] || 50;
+            } catch (e) {
+                document.getElementById('condition').innerText = "Offline";
             }
         }
 
-        searchBtn.addEventListener("click", () => {
-            if(cityInput.value) checkWeather(cityInput.value);
+        function renderList() {
+            const list = document.getElementById('city-list');
+            list.innerHTML = '';
+            
+            cities.forEach(city => {
+                const div = document.createElement('div');
+                div.className = 'city-item';
+                if(city.name === defaultCity.name) div.classList.add('active');
+                
+                div.innerHTML = `
+                    <span class="city-name">${city.name}</span>
+                    <span class="temp-mini" id="temp-${city.name}">--°</span>
+                `;
+                
+                div.onclick = () => {
+                    document.querySelectorAll('.city-item').forEach(i => i.classList.remove('active'));
+                    div.classList.add('active');
+                    map.flyTo([city.lat, city.lon], 9, { duration: 1.5 });
+                    fetchWeather(city.lat, city.lon);
+                };
+                
+                list.appendChild(div);
+                
+                // Fetch mini temp
+                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current_weather=true`)
+                    .then(r => r.json())
+                    .then(d => {
+                        const el = document.getElementById(`temp-${city.name}`);
+                        if(el) el.innerText = Math.round(d.current_weather.temperature) + "°";
+                    })
+                    .catch(() => {});
+            });
+        }
+
+        // Search Filter
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase();
+            const items = document.querySelectorAll('.city-item');
+            items.forEach(item => {
+                const name = item.querySelector('.city-name').innerText.toLowerCase();
+                item.style.display = name.includes(val) ? 'flex' : 'none';
+            });
         });
 
-        cityInput.addEventListener("keypress", (e) => {
-            if (e.key === "Enter" && cityInput.value) checkWeather(cityInput.value);
-        });
+        // Start
+        renderList();
+        fetchWeather(defaultCity.lat, defaultCity.lon);
+
     </script>
 </body>
 </html>
